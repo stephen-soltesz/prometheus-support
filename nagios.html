@@ -1,0 +1,43 @@
+{{ template "head" . }}
+
+{{ template "prom_right_table_head" }}
+<tr>
+  <th>Nagios NDT</th>
+  <!--th>{{ template "prom_query_drilldown" (args "sum(up{job='nagios'})") }} / {{ template "prom_query_drilldown" (args "count(up{job='node'})") }}</th-->
+  <th>{{ template "prom_query_drilldown" (args "count_values('0', nagios_check_ndt_ssl_cert_e2e_state)") }}</th>
+</tr>
+{{ template "prom_right_table_tail" }}
+
+{{ template "prom_content_head" . }}
+<h1>MyJob</h1>
+
+<h3>NDT SSL Server Count</h3>
+<div id="queryGraph"></div>
+<script>
+new PromConsole.Graph({
+  node: document.querySelector("#queryGraph"),
+  expr: "label_replace(label_replace(label_replace(label_replace(count_values('online', {__name__=~'nagios_check_ndt_tcp_e2e_state|nagios_check_ndt_ssl_cert_e2e_state'}) by (__name__), 'online', 'True', 'online', '0'), 'online', 'False', 'online', '2'), '__name__', 'NDT-SSL', '__name__', 'nagios_check_ndt_ssl_cert_e2e_state'), '__name__', 'NDT', '__name__', 'nagios_check_ndt_tcp_e2e_state')",
+  yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+  yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+  yUnits: " Servers",
+  yTitle: "Count"
+})
+</script>
+
+<h3>Top 5 Disk usage</h3>
+<div id="topkDisk"></div>
+<script>
+new PromConsole.Graph({
+  node: document.querySelector("#topkDisk"),
+  expr: "topk(5, nagios_check_disk_vservers_used / nagios_check_disk_vservers_total)",
+  name: "% Used",
+  yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+  yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+  yUnits: "%",
+  yTitle: "Vservers Disk Used"
+})
+</script>
+
+{{ template "prom_content_tail" . }}
+
+{{ template "tail" }}

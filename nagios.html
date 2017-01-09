@@ -2,14 +2,14 @@
 
 {{ template "prom_right_table_head" }}
 <tr>
-  <th>Nagios NDT</th>
+  <th>NDT Online Count</th>
   <!--th>{{ template "prom_query_drilldown" (args "sum(up{job='nagios'})") }} / {{ template "prom_query_drilldown" (args "count(up{job='node'})") }}</th-->
   <th>{{ template "prom_query_drilldown" (args "count_values('0', nagios_check_ndt_ssl_cert_e2e_state)") }}</th>
 </tr>
 {{ template "prom_right_table_tail" }}
 
 {{ template "prom_content_head" . }}
-<h1>MyJob</h1>
+<h1>Sample Console</h1>
 
 <h3>NDT SSL Server Count</h3>
 <div id="queryGraph"></div>
@@ -30,7 +30,6 @@ new PromConsole.Graph({
 new PromConsole.Graph({
   node: document.querySelector("#topkDisk"),
   expr: "topk(5, nagios_check_disk_vservers_used / nagios_check_disk_vservers_total)",
-  name: "% Used",
   yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
   yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
   yUnits: "%",

@@ -14,164 +14,185 @@ rule_files:
   # - "first.rules"
   # - "second.rules"
 
-# A scrape configuration.
+# Scrape configurations.
+#
+# Each job name defines a monitoring target (or method for discovering
+# targets).
+#
+# The M-Lab Prometheus configuration uses three config types:
+#  * static targets (static_config)
+#  * automatically discovered services via kubernetes (kubernetes_sd_config)
+#  * automatically discovered services via file (file_sd_config)
+#
+# Static targets cannot change after start. Because of this, only long lived
+# targets should be static.
+#
+# Kubernetes targets are discovered automatically by querying the kubernetes
+# master API. The configuration for this is simplest when Prometheus runs in
+# the same cluster as the kubernetes master being monitored. In particular,
+# the master CA certificates and an authentication token are mounted in every
+# container's filesystem for easy access.
+#
+# Discovery of all other targets occurs by reading a configuration file. This
+# configuration file can be updated out of band and Prometheus will
+# periodically re-read the contents adding new targets and removing old ones.
 scrape_configs:
-# A scrape configuration for running Prometheus on a Kubernetes cluster.
-# This uses separate scrape configs for cluster components (i.e. API server, node)
-# and services to allow each to use different authentication configs.
-#
-# Kubernetes labels will be added as Prometheus labels on metrics via the
-# `labelmap` relabeling action.
+  # Kubernetes configurations, inspired by:
+  # https://github.com/prometheus/prometheus/blob/master/documentation/examples
+  #
+  # Four scrape configs correspond to kubernetes cluster components.
+  # Specifically:
+  #  * master API
+  #  * cluster nodes
+  #  * pods
+  #  * service endpoints
+  #
+  # The separation allows each component to use different authentication
+  # configs.
+  #
+  # Kubernetes labels can be added as Prometheus labels on metrics via the
+  # relabeling action.
 
-# Scrape config for API servers.
-#
-# Kubernetes exposes API servers as endpoints to the default/kubernetes
-# service so this uses `endpoints` role and uses relabelling to only keep
-# the endpoints associated with the default/kubernetes service using the
-# default named port `https`. This works for single API server deployments as
-# well as HA API server deployments.
-- job_name: 'kubernetes-apiservers'
+  # Scrape config for kubernetes master API server.
+  #
+  # The kubernetes API is exposed as an "endpoint". Since kubernetes may have
+  # many endpoints, this configuration restricts the targets monitored to the
+  # default/kubernetes service. The relabelling rules ignore other endpoints.
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
 
-  kubernetes_sd_configs:
-  - role: endpoints
+    # The kubernetes API requires authentication and uses a self-signed
+    # certificate. The tls_config specifies the CA cert and token
+    # automatically mounted in the container filesystem.
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
 
-  # Default to scraping over https. If required, just disable this or change to
-  # `http`.
-  scheme: https
+    # The source_labels are concatenated with ';'. The regex matches a single
+    # value for the default kubernetes service endpoint. If there are
+    # multiple API servers, all will match this pattern.
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace,
+                        __meta_kubernetes_service_name,
+                        __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
 
-  # This TLS & bearer token file config is used to connect to the actual scrape
-  # endpoints for cluster components. This is separate to discovery auth
-  # configuration because discovery & scraping are two separate concerns in
-  # Prometheus. The discovery auth config is automatic if Prometheus runs inside
-  # the cluster. Otherwise, more config options have to be provided within the
-  # <kubernetes_sd_config>.
-  tls_config:
-    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    # If your node certificates are self-signed or use a different CA to the
-    # master CA, then disable certificate verification below. Note that
-    # certificate verification is an integral part of a secure infrastructure
-    # so this should only be disabled in a controlled environment. You can
-    # disable certificate verification by uncommenting the line below.
-    #
-    # insecure_skip_verify: true
-  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  # Scrape config for kubernetes nodes.
+  #
+  # A kubernetes cluster consists of multiple nodes. Each reports metrics
+  # related to the whole machine.
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    # TODO: if we skip_verify, do we still need the bearer token?
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      # Nodes are discovered and scrapped using the kubernetes internal network
+      # IP. Unfortunately, the certificates do not validate on requests:
+      #  "x509: cannot validate certificate for 10.0.4.126 because it doesn't
+      #  contain any IP SANs"
+      # This is a known issue without a likely solution:
+      # https://github.com/prometheus/prometheus/issues/1822
+      # Since these IPs are internal to the kubernetes virtual network, it
+      # should be safe to skip certificate verification.
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
 
-  # Keep only the default/kubernetes service endpoints for the https port. This
-  # will add targets for each API server which Kubernetes adds an endpoint to
-  # the default/kubernetes service.
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
-    action: keep
-    regex: default;kubernetes;https
+    # Copy node labels from kubernetes to labels on the prometheus metrics.
+    # TODO(soltesz): There are many labels. Some look unnecessary. Restrict
+    # pattern to match helpful labels.
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
 
-- job_name: 'kubernetes-nodes'
+  # Scrape config for kubernetes pods.
+  #
+  # Kubernetes pods are scraped when they have an annotation:
+  #   `prometheus.io/scrape=true`.
+  #
+  # Configuration expects the default HTTP protocol scheme.
+  # Configuration expects the default path of /metrics on targets.
+  #
+  # Pods report every declared container port. So, it's possible that not all
+  # ports will be instrumented. So, in the future, we may add some filters.
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
 
-  # Default to scraping over https. If required, just disable this or change to
-  # `http`.
-  scheme: https
+    relabel_configs:
+      # Check for the prometheus.io/scrape=true annotation.
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      # Copy all pod labels from kubernetes to the prometheus metrics.
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      # Add the kubernetes namespace as a prometheus label.
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      # Add the kubernetes pod name as a prometheus label.
+      # TODO(soltesz): pod names include a randomly generated portion. This
+      # could make historical queries more complex. Do we need this?
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
 
-  # This TLS & bearer token file config is used to connect to the actual scrape
-  # endpoints for cluster components. This is separate to discovery auth
-  # configuration because discovery & scraping are two separate concerns in
-  # Prometheus. The discovery auth config is automatic if Prometheus runs inside
-  # the cluster. Otherwise, more config options have to be provided within the
-  # <kubernetes_sd_config>.
-  tls_config:
-    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    # If your node certificates are self-signed or use a different CA to the
-    # master CA, then disable certificate verification below. Note that
-    # certificate verification is an integral part of a secure infrastructure
-    # so this should only be disabled in a controlled environment. You can
-    # disable certificate verification by uncommenting the line below.
+  # Scrape config for kubernetes service endpoints.
+  #
+  # Service endpoints are scraped when they have an annotation:
+  #   `prometheus.io/scrape=true`.
+  #
+  # Configuration expects the default HTTP protocol scheme.
+  # Configuration expects the default path of /metrics on targets.
+  - job_name: 'kubernetes-service-endpoints'
+    kubernetes_sd_configs:
+      - role: endpoints
 
+    relabel_configs:
+      # Check for the prometheus.io/scrape=true annotation.
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      # Copy all service labels from kubernetes to the prometheus metrics.
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      # Add the kubernetes namespace as a prometheus label.
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      # Add the kubernetes service name as a prometheus label.
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_name
 
-    # The IPs for kubernetes internal services use IPs, however, the certificates
-    # do not validate on requests with:
-    # NOTE: x509: cannot validate certificate for 10.0.4.126 because it doesn't contain any IP SANs
-    # See also: https://github.com/prometheus/prometheus/issues/1822
-    insecure_skip_verify: true
-  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  # Scrape config for legacy targets.
+  #
+  # Using an out-of-band process, generated configs can be copied into the
+  # Prometheus container. Prometheus will periodically re-read these files to
+  # load any new targets or remove missing ones.
+  #
+  # The file format is described here:
+  #   https://prometheus.io/docs/operating/configuration/#file_sd_config
+  - job_name: 'legacy-targets'
+    file_sd_configs:
+      - files:
+          # NOTE: the path /etc/prometheus/legacy does not exist in the default
+          # image. It must be created in images derived for M-Lab.
+          - /etc/prometheus/legacy/*.json
+          - /etc/prometheus/legacy/*.yaml
+        # Refresh interval to re-read the files.
+        refresh_interval: 5m
 
-  kubernetes_sd_configs:
-  - role: node
-
-  relabel_configs:
-  - action: labelmap
-    regex: __meta_kubernetes_node_label_(.+)
-
-# Example scrape config for pods
-#
-# The relabeling allows the actual pod scrape endpoint to be configured via the
-# following annotations:
-#
-# * `prometheus.io/scrape`: Only scrape pods that have a value of `true`
-# * `prometheus.io/path`: If the metrics path is not `/metrics` override this.
-# * `prometheus.io/port`: Scrape the pod on the indicated port instead of the default of `9102`.
-- job_name: 'kubernetes-pods'
-
-  kubernetes_sd_configs:
-  - role: pod
-
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-    action: keep
-    regex: true
-  - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-    action: replace
-    target_label: __metrics_path__
-    regex: (.+)
-  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-    action: replace
-    regex: (.+):(?:\d+);(\d+)
-    replacement: ${1}:${2}
-    target_label: __address__
-  - action: labelmap
-    regex: __meta_kubernetes_pod_label_(.+)
-  - source_labels: [__meta_kubernetes_namespace]
-    action: replace
-    target_label: kubernetes_namespace
-  - source_labels: [__meta_kubernetes_pod_name]
-    action: replace
-    target_label: kubernetes_pod_name
-
-# Scrape config for service endpoints.
-#
-# The relabeling allows the actual service scrape endpoint to be configured
-# via the following annotations:
-#
-# * `prometheus.io/scrape`: Only scrape services that have a value of `true`
-# * `prometheus.io/scheme`: If the metrics endpoint is secured then you will need
-# to set this to `https` & most likely set the `tls_config` of the scrape config.
-# * `prometheus.io/path`: If the metrics path is not `/metrics` override this.
-# * `prometheus.io/port`: If the metrics are exposed on a different port to the
-# service then set this appropriately.
-- job_name: 'kubernetes-service-endpoints'
-
-  kubernetes_sd_configs:
-  - role: endpoints
-
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-    action: keep
-    regex: true
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-    action: replace
-    target_label: __scheme__
-    regex: (https?)
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-    action: replace
-    target_label: __metrics_path__
-    regex: (.+)
-  - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-    action: replace
-    target_label: __address__
-    regex: (.+)(?::\d+);(\d+)
-    replacement: $1:$2
-  - action: labelmap
-    regex: __meta_kubernetes_service_label_(.+)
-  - source_labels: [__meta_kubernetes_namespace]
-    action: replace
-    target_label: kubernetes_namespace
-  - source_labels: [__meta_kubernetes_service_name]
-    action: replace
-    target_label: kubernetes_name
+  # Scrape config for the nagios exporter.
+  #
+  # The nagios exporter generates its own labels.
+  # TODO(soltesz): the "job=nagios.measurementlab.net:5000" label may be
+  # unnecessary; consider removing this.
+  - job_name: 'nagios-exporter'
+    static_configs:
+      - targets: ['nagios.measurementlab.net:5000']

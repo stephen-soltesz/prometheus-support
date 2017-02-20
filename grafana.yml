@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auto-grafana-disk0
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "slow"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: demo-grafana
+  annotations:
+    prometheus.io/scrape: 'false'
+  name: demo-granfana
+  namespace: default
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    run: demo-grafana
+  sessionAffinity: None
+  externalIPs:
+    - 104.196.164.214
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    run: demo-grafana
+  name: demo-grafana
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: demo-grafana
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      name: demo-grafana
+      labels:
+        run: demo-grafana
+    spec:
+      containers:
+      - image: grafana/grafana:4.1.1
+        name: demo-grafana
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: not-the-real-password
+        ports:
+          - containerPort: 3000
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "200m"
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          name: demo-grafana-disk
+      volumes:
+      - name: demo-grafana-disk
+        persistentVolumeClaim:
+          claimName: auto-grafana-disk0

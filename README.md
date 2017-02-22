@@ -75,6 +75,23 @@ Within five minutes, the new targets should be reported in: Status -> Targets
 
 [file_sd_config]: https://prometheus.io/docs/operating/configuration/#file_sd_config
 
+# Secrets
+
+The Grafana configuration depends on a pre-defined password for the admin user.
+It was created manually using this command.
+
+```
+kubectl create secret generic grafana-admin \
+    --from-literal=grafana-password=[redacted text]
+```
+
+To recover the password, connect to the cluster via kubectl proxy and then run:
+
+```
+kubectl get secrets -o jsonpath='{.items[*].data.grafana-password}' \
+    | base64 --decode && echo ''
+```
+
 # Debugging the steps above
 
 ## Public IP appears to hang

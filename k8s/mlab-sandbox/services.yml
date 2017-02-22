@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: prometheus-server
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '9090'
+    dns.alpha.kubernetes.io/external: prometheus.mlab.fyi
+  name: prometheus-server
+  namespace: default
+spec:
+  ports:
+  - port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    run: prometheus-server
+  sessionAffinity: None
+  # Allocate a static IP manually in GCP console: Networking -> Load Balancing.
+  externalIPs:
+    - 104.196.164.214
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: grafana-server
+  annotations:
+    # The grafana web server does not export any prometheus metrics.
+    prometheus.io/scrape: 'false'
+  name: granfana-server
+  namespace: default
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    run: grafana-server
+  sessionAffinity: None
+  # Allocate a static IP manually in GCP console: Networking -> Load Balancing.
+  externalIPs:
+    - 104.196.164.214
+  type: ClusterIP

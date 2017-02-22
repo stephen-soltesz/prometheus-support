@@ -5,38 +5,3 @@ metadata:
 provisioner: kubernetes.io/gce-pd
 parameters:
   type: pd-standard
-# ---
-# apiVersion: v1
-# kind: PersistentVolume
-# metadata:
-#   name: demo-prometheus-disk-200g
-#   annotations:
-#     volume.beta.kubernetes.io/storage-class: "slow"
-# spec:
-#   capacity:
-#     storage: 200Gi
-#  accessModes:
-#    - ReadWriteOnce
-#  persistentVolumeReclaimPolicy: Retain
-#  gcePersistentDisk:
-#    pdName: demo-prometheus-disk-500g
-#    fsType: ext4
----
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: auto-disk0
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "slow"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 200Gi
-  #selector:
-  #  matchLabels:
-  #    release: "stable"
-  #  matchExpressions:
-  #    # "dev" in pod['environment']
-  #    - {key: environment, operator: In, values: [dev]}

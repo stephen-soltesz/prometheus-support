@@ -150,6 +150,12 @@ Delete the storage class.
     kubectl delete -f k8s/storage-class.yml
 
 
+# ConfigMap
+
+    kubectl create configmap prometheus-config \
+        --from-file=prometheus.yml=prometheus/prometheus.yml \
+        --dry-run -o yaml | kubectl replace -f -
+
 # Debugging the steps above
 
 ## Public IP appears to hang

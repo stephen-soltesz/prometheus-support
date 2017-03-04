@@ -177,6 +177,26 @@ kubectl get secrets -o jsonpath='{.items[*].data.grafana-password}' \
     | base64 --decode && echo ''
 ```
 
+# Grafana Setup
+
+For now, we must login to the Grafana web interface and add a datasource
+corresponding to the local prometheus server. It may be possible to automate
+this in the future. Either way, this step should not be necessary too many
+times since `/var/lib/grafana` is a persistent volume.
+
+The steps are:
+
+ * Login to grafana.
+ * Click "Add data source."
+ * Name the source, e.g. "Prometheus"
+ * Select the Type as "Prometheus"
+ * Use a URI corresponding to the service name, i.e.
+   http://prometheus-public-service.default.svc.cluster.local:9090
+   Note: the DNS name is added automatically within the kubernetes cluster.
+   The name provided must be a fully qualified URL.
+ * Leave the Access as "proxy"
+ * Click "Add"
+
 # Debugging the steps above
 
 ## Public IP appears to hang

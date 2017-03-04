@@ -95,7 +95,7 @@ update corresponding DNS records for that IP address. So, we must reserve a
 static IP through the Cloud Console interface first.
 
 *Also, note*: Only one GKE cluster at a time can use the static IPs allocated in
-the `k8s/*/services.yml` files. If you are using an additional GKE cluster (e.g.
+the `k8s/.../services.yml` files. If you are using an additional GKE cluster (e.g.
 in mlab-sandbox project), create a new services.yml file that uses the new
 static IP allocation.
 
@@ -129,7 +129,13 @@ already exist, this will create a new one. It will be automatically formatted.
 
     kubectl create -f k8s/prometheus.yml
 
+Check for the existence of the grafana-admin secret, and [set it up if
+necessary][secrets]. Then, create the grafana deployment.
+
+    kubectl create -f k8s/grafana.yml
+
 [cluster]: https://cloud.google.com/container-engine/docs/clusters/operations
+[secrets]: #secrets
 
 ## Shutdown
 
@@ -154,6 +160,22 @@ Delete the storage class.
 
     kubectl delete -f k8s/storage-class.yml
 
+# Secrets
+
+The Grafana configuration depends on a pre-defined password for the admin user.
+It was created manually using this command.
+
+```
+kubectl create secret generic grafana-admin \
+    --from-literal=grafana-password=[redacted text]
+```
+
+To recover the password, connect to the cluster via kubectl proxy and then run:
+
+```
+kubectl get secrets -o jsonpath='{.items[*].data.grafana-password}' \
+    | base64 --decode && echo ''
+```
 
 # Debugging the steps above
 

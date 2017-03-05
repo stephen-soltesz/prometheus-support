@@ -38,14 +38,19 @@ spec:
             memory: "1Gi"
             cpu: "200m"
         # TODO: add support for SSL certificates, so logins are secure.
-        # TODO: add a ConfigMap for /etc/grafana/grafana.ini (if needed)
         volumeMounts:
         # Default configs place an sqlite3 database in /var/lib/grafana
         - mountPath: /var/lib/grafana
           name: grafana-storage
+        # /etc/grafana/* should contain the M-Lab Grafana configs.
+        - mountPath: /etc/grafana
+          name: grafana-config
       # Disks created manually, can be named here explicitly using
       # gcePersistentDisk instead of the persistentVolumeClaim.
       volumes:
       - name: grafana-storage
         persistentVolumeClaim:
           claimName: auto-grafana-disk0
+      - name: grafana-config
+        configMap:
+          name: grafana-config

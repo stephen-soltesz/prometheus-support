@@ -31,6 +31,11 @@ spec:
             secretKeyRef:
               name: grafana-admin
               key: grafana-password
+        - name: GF_SERVER_DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: grafana-config
+              key: domain
         ports:
           - containerPort: 3000
         resources:

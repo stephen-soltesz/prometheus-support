@@ -199,9 +199,14 @@ The steps are:
 
 ## ConfigMap
 
-Create ConfigMap for grafana.
+Create ConfigMap for grafana. This configmap creates key/value pairs for every
+file in the grafana directory as well as a literal value for `domain=`. The
+domain value is passed to grafana from the environment so that alert URLs point
+to the correct location.
 
-    kubectl create configmap grafana-config --from-file=grafana
+    kubectl create configmap grafana-config \
+        --from-literal=domain=mlab-sandbox.mlab.fyi \
+        --from-file=grafana
 
 # Debugging the steps above
 

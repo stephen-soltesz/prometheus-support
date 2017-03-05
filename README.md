@@ -197,6 +197,12 @@ The steps are:
  * Leave the Access as "proxy"
  * Click "Add"
 
+## ConfigMap
+
+Create ConfigMap for grafana.
+
+    kubectl create configmap grafana-config --from-file=grafana
+
 # Debugging the steps above
 
 ## Public IP appears to hang

@@ -1,0 +1,3 @@
+[submodule "k8s-secrets"]
+	path = k8s-secrets
+	url = git@github.com:stephen-soltesz/k8s-secrets.git

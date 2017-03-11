@@ -29,13 +29,30 @@ spec:
         - name: GF_SECURITY_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: grafana-admin
+              name: grafana
               key: grafana-password
         - name: GF_SERVER_DOMAIN
           valueFrom:
             configMapKeyRef:
               name: grafana-config
               key: domain
+        - name: GF_EXTERNAL_IMAGE_STORAGE_PROVIDER
+          value: s3
+        - name: GF_EXTERNAL_IMAGE_STORAGE_S3_BUCKET_URL
+          valueFrom:
+            secretKeyRef:
+              name: grafana
+              key: s3-bucket-url
+        - name: GF_EXTERNAL_IMAGE_STORAGE_S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: grafana
+              key: s3-access-key
+        - name: GF_EXTERNAL_IMAGE_STORAGE_S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: grafana
+              key: s3-secret-key
         ports:
           - containerPort: 3000
         resources:

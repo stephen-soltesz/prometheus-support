@@ -1,0 +1,27 @@
+
+# Update the instance label to the abbreviated mlab1.abc01 form.
+#sidestream_connection_count_short = 
+#    label_replace(
+#        sidestream_connection_count, "instance", "$1",
+#        "instance", "npad.iupui.(mlab[0-9].[a-z]{3}[0-9][0-9t]).+")
+
+
+# As of 2017-03, all rules are evalutated in parallel, so building in
+# dependencies will result in using old data or other errors.
+# https://github.com/prometheus/prometheus/blob/master/rules/manager.go#L240
+#
+# Use full raw expressions in rule definitions.
+
+# Create series of deltas.
+sidestream_connection_count:increase2m =
+    increase(sidestream_connection_count{type=~"ipv4|ipv6"}[2m])
+
+
+# Create a series of deltas per machine.
+sidestream_connection_count:increase2m:instance = 
+    sum by(instance) (increase(sidestream_connection_count{type=~"ipv4|ipv6"}[2m]))
+
+
+# Create a series of deltas per experiment.
+sidestream_connection_count:increase2m:lsb = 
+    sum by(lsb) (increase(sidestream_connection_count{type=~"ipv4|ipv6"}[2m]))

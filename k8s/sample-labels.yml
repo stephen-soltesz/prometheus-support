@@ -25,7 +25,18 @@ spec:
       containers:
         - name: volume-test-container
           image: gcr.io/google_containers/busybox
-          command: ["sh", "-c", "cat /etc/labels ; echo '' ; cat /etc/annotations"]
+          command: ["sh", "-c", "cat /etc/labels ; echo ''; echo 'boo' $EXAMPLE_LABEL 'zoo' ; echo ''; cat /etc/annotations"]
+          # NOTE: Syntax not yet supported.
+          #env:
+          #- name: EXAMPLE_LABEL
+          #  valueFrom:
+          #    fieldRef:
+          #      fieldPath: metadata.labels[zone]
+          env:
+          - name: EXAMPLE_LABEL
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           volumeMounts:
             - name: podinfo
               mountPath: /etc

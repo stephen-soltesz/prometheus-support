@@ -1,0 +1,42 @@
+# Adapted from https://docs.openshift.org/latest/dev_guide/downward_api.html
+# and, updated to use the kubernetes 1.5 spec.
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sample-labels
+  namespace: default
+spec:
+  replicas: 1
+  # Pod template.
+  template:
+    metadata:
+      # These labels and annotations will be available in key="value" form as
+      # files in the container mountPath below.
+      labels:
+        zone: us-east-coast
+        cluster: downward-api-test-cluster1
+        rack: rack-123
+      name: dapi-volume-test-pod
+      annotations:
+        annotation1: "345"
+        annotation2: "456"
+    spec:
+      containers:
+        - name: volume-test-container
+          image: gcr.io/google_containers/busybox
+          command: ["sh", "-c", "cat /etc/labels ; echo '' ; cat /etc/annotations"]
+          volumeMounts:
+            - name: podinfo
+              mountPath: /etc
+              readOnly: false
+      volumes:
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "labels"
+                fieldRef:
+                  fieldPath: metadata.labels
+              - path: "annotations"
+                fieldRef:
+                  fieldPath: metadata.annotations

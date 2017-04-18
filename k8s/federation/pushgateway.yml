@@ -37,7 +37,7 @@ spec:
         # overwritten. For a fixed label set this is okay. However, if the set
         # of instance names grows over time without reuse, then the gateway
         # will persist that information indefinitely, but it won't be helpful.
-        # So, do not use file persistence.
+        # So, do not use file persistence until we're sure it's what we need.
         # args: ["-persistence.file=/pushgateway/metrics.dat",
         #        "-persistence.interval=1m"]
         ports:

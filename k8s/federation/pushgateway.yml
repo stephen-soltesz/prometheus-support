@@ -31,8 +31,15 @@ spec:
       # stable version.
       - image: prom/pushgateway:v0.3.1
         name: pushgateway-server
-        args: ["-persistence.file=/pushgateway/metrics.dat",
-               "-persistence.interval=1m"]
+
+        # NOTE: push gateway metrics do not expire. Once pushed to the gateway
+        # they remain indefinitely until the gateway restarts or they are
+        # overwritten. For a fixed label set this is okay. However, if the set
+        # of instance names grows over time without reuse, then the gateway
+        # will persist that information indefinitely, but it won't be helpful.
+        # So, do not use file persistence.
+        # args: ["-persistence.file=/pushgateway/metrics.dat",
+        #        "-persistence.interval=1m"]
         ports:
           - containerPort: 9091
         resources:
@@ -42,14 +49,3 @@ spec:
           limits:
             memory: "400Mi"
             cpu: "200m"
-        volumeMounts:
-        # /pushgateway stores metric state, and restores it after restarts.
-        - mountPath: /pushgateway
-          name: pushgateway-storage
-
-      # Disks created manually, can be named here explicitly using
-      # gcePersistentDisk instead of the persistentVolumeClaim.
-      volumes:
-      - name: pushgateway-storage
-        persistentVolumeClaim:
-          claimName: auto-pushgateway-disk0

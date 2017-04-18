@@ -334,8 +334,7 @@ scrape_configs:
   #   https://github.com/prometheus/pushgateway#prometheus-pushgateway
   - job_name: 'pushgateway-targets'
     # Normally, the prometheus server updates target labels at collection time,
-    # but we're aggregating from other prometheus servers, we want to take
-    # them as-is.
+    # but here we want to take them as-is.
     honor_labels: true
 
     static_configs:

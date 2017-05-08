@@ -32,6 +32,8 @@ type GKESource struct {
 }
 
 var (
+	// NOTE: As of 2017-05, there is no more specific scope for accessing the
+	// Container Engine API. The compute-platform scope is quite permissive.
 	gkeScopes = []string{compute.CloudPlatformScope}
 )
 

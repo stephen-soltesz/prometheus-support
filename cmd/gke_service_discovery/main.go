@@ -23,22 +23,27 @@ type Target interface {
 
 func main() {
 	flag.Parse()
-	start := time.Now()
+	var start time.Time
 
-	gkeSource, err := NewGKESource("mlab-sandbox")
-	if err != nil {
-		panic(err)
-	}
-	err = gkeSource.Collect()
-	if err != nil {
-		panic(err)
-	}
-	err = gkeSource.Save("output.json")
-	if err != nil {
-		panic(err)
-	}
-	log.Println(time.Since(start))
-	if err != nil {
-		panic(err)
+	// Only sleep as long as we need to, before starting a new iteration.
+	for ; ; time.Sleep(*refresh - time.Since(start)) {
+		start = time.Now()
+
+		gkeSource, err := NewGKESource(*project)
+		if err != nil {
+			log.Printf("Failed to get authenticated client: %s", err)
+			continue
+		}
+		err = gkeSource.Collect()
+		if err != nil {
+			log.Printf("Failed to get collect targets: %s", err)
+			continue
+		}
+		err = gkeSource.Save(*gkeTargets)
+		if err != nil {
+			log.Printf("Failed to save to %s: %s", *gkeTargets, err)
+			continue
+		}
+		log.Println(time.Since(start))
 	}
 }

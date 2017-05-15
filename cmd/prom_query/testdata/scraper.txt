@@ -1,0 +1,42 @@
+# Scraper and rsyncd.
+clear
+load 1m
+    up{service="scraper", machine="a", experiment="npad", rsync_module="sidestream"} 1
+    up{service="scraper", machine="a", experiment="npad", rsync_module="npad"} 1
+    up{service="scraper", machine="c", experiment="npad", rsync_module="sidestream"} 1
+    up{service="scraper", machine="c", experiment="npad", rsync_module="npad"} 1
+    up{service="rsyncd", machine="a", experiment="npad"} 1
+    up{service="rsyncd", machine="b", experiment="npad"} 1
+
+eval instant at 0m count(up{service="scraper"})
+    {} 4
+
+eval instant at 0m count(up{service="scraper"}) == 0
+# EMPTY RESULT.
+
+eval instant at 0m count(up{service="scraper"}) < count(up{service="rsyncd"})
+# EMPTY RESULT.
+
+eval instant at 0m up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}
+    up{service="scraper", machine="c", experiment="npad", rsync_module="sidestream"} 1
+    up{service="scraper", machine="c", experiment="npad", rsync_module="npad"} 1
+
+eval instant at 0m up{service="rsyncd"} UNLESS ON(machine, experiment) up{service="scraper"}
+    up{service="rsyncd", machine="b", experiment="npad"} 1
+
+eval instant at 0m (up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}) OR (up{service="rsyncd"} UNLESS ON(machine, experiment) up{service="scraper"})
+    up{service="scraper", machine="c", experiment="npad", rsync_module="sidestream"} 1
+    up{service="scraper", machine="c", experiment="npad", rsync_module="npad"} 1
+    up{service="rsyncd", machine="b", experiment="npad"} 1
+
+eval instant at 0m count by(machine) (up{service="scraper"}) / scalar(count(count by(rsync_module) (up{service="scraper"}))) != 1
+# EMPTY RESULT.
+
+clear
+load 1m
+    up{service="scraper", machine="a", experiment="npad", rsync_module="sidestream"} 1
+    up{service="scraper", machine="a", experiment="npad", rsync_module="npad"} 1
+    up{service="scraper", machine="c", experiment="npad", rsync_module="sidestream"} 1
+
+eval instant at 0m count BY(machine) (up{service="scraper"}) / scalar(count(count BY(rsync_module) (up{service="scraper"}))) != 1
+    {machine="c"} 0.5

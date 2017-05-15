@@ -1,0 +1,162 @@
+# Machine inventory
+clear
+load 1m
+    up{service="machine_online"} 1
+
+eval instant at 0m count(up{service="machine_online"}) == 0
+# EMPTY RESULT.
+
+# Sidestream exporter
+clear
+load 1m
+    up{service="sidestream", machine="a"} 1
+    up{service="machine_online", machine="a"} 1
+
+eval instant at 0m count(up{service="sidestream"})
+    {} 1
+
+eval instant at 0m count(up{service="sidestream"}) == 0
+# EMPTY RESULT.
+
+eval instant at 0m count(up{service="sidestream"}) < count(up{service="machine_online"})
+# EMPTY RESULT.
+
+eval instant at 0m up{service="sidestream"} UNLESS ON(machine) up{service="machine_online"}
+# EMPTY RESULT.
+
+# Scraper collection count
+clear
+load 1m
+    up{service="scraper", machine="a", experiment="foo"} 1
+    up{service="rsyncd", machine="a", experiment="foo"} 1
+
+eval instant at 0m count(up{service="scraper"})
+    {} 1
+
+eval instant at 0m count(up{service="scraper"}) == 0
+# EMPTY RESULT.
+
+eval instant at 0m count(up{service="scraper"}) != count(up{service="rsyncd"})
+# EMPTY RESULT.
+
+eval instant at 0m up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}
+# EMPTY RESULT.
+
+# Scraper collection missing rsyncd inventory.
+clear
+load 1m
+    up{service="scraper", machine="a", experiment="foo"} 1
+
+eval instant at 0m count(up{service="scraper"})
+    {} 1
+
+# 
+eval instant at 0m up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}
+    up{service="scraper", machine="a", experiment="foo"} 1
+
+# Missing from inventory
+# Rsyncd
+# The set of monitored rsync servers that are not on inventory machines (strict match):
+clear
+load 1m
+    up{service="rsyncd", machine="a", experiment="foo"} 1
+    up{service="ssh806", machine="b"} 1
+
+eval instant at 0m up{service="rsyncd"} UNLESS ON(machine) up{service="ssh806"}
+    up{service="rsyncd", machine="a", experiment="foo"} 1
+
+# Sidestream
+# The set of monitored sidestream exporters that are not on inventory machines (strict match):
+clear
+load 1m
+    up{service="sidestream", machine="a", experiment="foo"} 1
+    up{service="ssh806", machine="b"} 1
+
+eval instant at 0m up{service="sidestream"} UNLESS ON(machine) up{service="ssh806"}
+    up{service="sidestream", machine="a", experiment="foo"} 1
+
+clear
+load 1m
+    up{service="sidestream", machine="a", experiment="foo"} 1
+    up{service="ssh806", machine="a"} 1
+
+eval instant at 0m up{service="sidestream"} UNLESS ON(machine) up{service="ssh806"}
+# EMPTY RESULT.
+
+# Scraper
+# The set of monitored scraper targets that are not on inventory machines (strict match):
+
+clear
+load 1m
+    up{service="scraper", machine="a"} 1
+    up{service="ssh806", machine="a"} 1
+
+eval instant at 0m up{service="scraper"} UNLESS ON(machine) up{service="ssh806"}
+# EMPTY RESULT.
+
+clear
+load 1m
+    up{service="scraper", machine="a"} 1
+    up{service="ssh806", machine="b"} 1
+
+eval instant at 0m up{service="scraper"} UNLESS ON(machine) up{service="ssh806"}
+    up{service="scraper", machine="a"} 1
+
+# Services are missing from configuration
+# Rsyncd
+# The set of machines that do not have any rsyncd services. (partial match):
+
+# up{service="machine_online"}
+#     UNLESS ON(machine) up{service="rsyncd_online"}
+
+# Sidestream
+# The set of machines that do not have the sidestream service. (strict match):
+
+# up{service="machine_online"}
+#     UNLESS ON(machine) up{service="sidestream"}
+
+# Scraper
+# The set of machines that do not have any scraper services. (partial match):
+
+# up{service="machine_online"}
+#     UNLESS ON(machine) up{service="scraper-cluster", machine=~".+"}
+
+# Scraper SLO
+# Stale collection from healthy machines
+# The set of all scrapers that have a max file time greater than 36 hours AND whose machines have been online for more than two hours (according to the sidestream exporter).
+
+clear
+load 1m
+    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 130000+60x2200
+    process_start_time_seconds{service="sidestream", machine="a"} 8000+60x2200
+
+# eval instant at 36h (time() - scraper_maxrawfiletimearchived{service="scraper-sync"}) > (36 * 60 * 60) AND ON(machine) (time() - process_start_time_seconds{service="sidestream"}) > (2 * 60 * 60)
+
+eval instant at 0m scraper_maxrawfiletimearchived{service="scraper-sync"} > (36 * 60 * 60) AND ON(machine) process_start_time_seconds{service="sidestream"} > (2 * 60 * 60)
+    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 130000
+
+#eval instant at 36h time() - scraper_maxrawfiletimearchived{service="scraper-sync"}
+#    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 259600
+
+eval instant at 50m time()
+    3000
+
+#  > (36 * 60 * 60)
+
+# eval instant at 0m time() > bool 1
+
+#  AND ON(machine) (time() - process_start_time_seconds{service="sidestream"}) > (2 * 60 * 60)
+
+# There may be many scrapers with out of date archive, but they are either for
+# machines that are offline (for which process_start_time_seconds will not exist)
+# or for machines that have been online for less than 2 hours.
+
+# Missing Sidestream exporters
+# The set of all machines without a running sidestream exporter.
+
+# up{service="machine_online"} == 1
+#     AND ON(machine) up{service="sidestream"} == 0
+
+# sum_over_time(probe_success{service="machine_online"}[10m]) >= 8
+#     AND ON(machine)
+#         sum_over_time(up{service="sidestream"}[10m]) == 0

@@ -11,11 +11,11 @@ load 1m
 eval instant at 0m count(up{service="scraper"})
     {} 4
 
-eval instant at 0m count(up{service="scraper"}) == 0
+eval instant at 0m absent(up{service="scraper"})
 # EMPTY RESULT.
 
 eval instant at 0m count(up{service="scraper"}) != count(up{service="rsyncd"})
-# EMPTY RESULT.
+    {} 4
 
 eval instant at 0m up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}
     up{service="scraper", machine="c", experiment="npad", rsync_module="sidestream"} 1

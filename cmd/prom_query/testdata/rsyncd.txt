@@ -1,0 +1,14 @@
+# Missing from inventory
+# Rsyncd
+# The set of monitored rsync servers that are not on inventory machines (strict match):
+# Services are missing from configuration
+# Rsyncd
+# The set of machines that do not have any rsyncd services. (partial match):
+clear
+load 1m
+    up{service="rsyncd", machine="a", experiment="foo"} 1
+    up{service="ssh806", machine="b"} 1
+
+eval instant at 0m up{service="rsyncd"} UNLESS ON(machine) up{service="ssh806"}
+    up{service="rsyncd", machine="a", experiment="foo"} 1
+

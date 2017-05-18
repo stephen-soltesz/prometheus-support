@@ -14,7 +14,7 @@ eval instant at 0m count(up{service="scraper"})
 eval instant at 0m count(up{service="scraper"}) == 0
 # EMPTY RESULT.
 
-eval instant at 0m count(up{service="scraper"}) < count(up{service="rsyncd"})
+eval instant at 0m count(up{service="scraper"}) != count(up{service="rsyncd"})
 # EMPTY RESULT.
 
 eval instant at 0m up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}

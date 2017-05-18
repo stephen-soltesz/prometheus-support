@@ -1,0 +1,17 @@
+# Machine inventory.
+
+# Non-zero
+clear
+load 1m
+    up{service="ssh806"} 1
+
+eval instant at 0m absent(up{service="ssh806"})
+# EMPTY RESULT.
+
+# Zero size.
+clear
+load 1m
+    up{service="any-other-service"} 1
+
+eval instant at 0m absent(up{service="ssh806"})
+    {service="ssh806"} 1

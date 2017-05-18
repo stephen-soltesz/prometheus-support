@@ -1,0 +1,40 @@
+# Scraper SLO
+# Stale collection from healthy machines
+# The set of all scrapers that have a max file time greater than 36 hours AND whose machines have been online for more than two hours (according to the sidestream exporter).
+
+clear
+load 1m
+    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 130000+60x2200
+    process_start_time_seconds{service="sidestream", machine="a"} 8000+60x2200
+
+# eval instant at 36h (time() - scraper_maxrawfiletimearchived{service="scraper-sync"}) > (36 * 60 * 60) AND ON(machine) (time() - process_start_time_seconds{service="sidestream"}) > (2 * 60 * 60)
+
+eval instant at 0m scraper_maxrawfiletimearchived{service="scraper-sync"} > (36 * 60 * 60) AND ON(machine) process_start_time_seconds{service="sidestream"} > (2 * 60 * 60)
+    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 130000
+
+#eval instant at 36h time() - scraper_maxrawfiletimearchived{service="scraper-sync"}
+#    scraper_maxrawfiletimearchived{service="scraper-sync", machine="a"} 259600
+
+eval instant at 50m time()
+    3000
+
+#
+# (time() - scraper_maxrawfiletimearchived{service="scraper-sync"}) > (36 * 60 * 60)
+#    AND ON(machine)
+#       (time() - process_start_time_seconds{service=”sidestream”}) > (2 * 60 * 60)
+#
+
+
+# There may be many scrapers with out of date archive, but they are either for
+# machines that are offline (for which process_start_time_seconds will not exist)
+# or for machines that have been online for less than 2 hours.
+
+# Missing Sidestream exporters
+# The set of all machines without a running sidestream exporter.
+
+# up{service="ssh806"} == 1
+#     AND ON(machine) up{service="sidestream"} == 0
+
+# sum_over_time(probe_success{service="ssh806"}[10m]) >= 8
+#     AND ON(machine)
+#         sum_over_time(up{service="sidestream"}[10m]) == 0

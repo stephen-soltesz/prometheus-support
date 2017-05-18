@@ -1,0 +1,6 @@
+# (scraper_maxrawfiletimearchived{service="scraper-sync"}
+#     UNLESS ON(machine, experiment, rsync_module)
+#         up{service=”scraper”}) OR
+# (up{service=”scraper”}
+#     UNLESS ON(machine, experiment, rsync_module)
+#         scraper_maxrawfiletimearchived{service="scraper-sync"})

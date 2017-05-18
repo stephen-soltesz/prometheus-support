@@ -9,12 +9,14 @@ load 1m
 eval instant at 0m count(up{service="sidestream"})
     {} 2
 
-eval instant at 0m count(up{service="sidestream"}) == 0
+eval instant at 0m absent(up{service="sidestream"})
 # EMPTY RESULT.
 
 eval instant at 0m count(up{service="sidestream"}) < count(up{service="ssh806"})
 # EMPTY RESULT.
 
+# Sidestream
+# The set of machines that do not have the sidestream service. (strict match):
 eval instant at 0m up{service="sidestream"} UNLESS ON(machine) up{service="ssh806"}
     up{service="sidestream", machine="b"} 1
 

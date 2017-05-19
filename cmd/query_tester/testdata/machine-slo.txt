@@ -1,0 +1,16 @@
+# Ensure that a service is running on a every machine to learn the machine up
+# time.
+
+# <initial-value> <operation [+-]> <delta> x <iterations>
+# e.g. 1+0x30 will create 30 iterations of (1 + 0), or a series of 30 1's at
+# 1 min increments.
+
+clear
+load 1m
+    probe_success{service="ssh806", machine="mlab1-sidestream-offline"} 1+0x29
+    probe_success{service="ssh806", machine="mlab2-sidestream-online"} 1+0x29
+    up{service="sidestream", machine="mlab1-sidestream-offline"} 0+0x29
+    up{service="sidestream", machine="mlab2-sidestream-online"} 1+0x29
+
+eval instant at 30m sum_over_time(up{service="sidestream"}[10m]) == 0 AND ON(machine) sum_over_time(probe_success{service="ssh806"}[20m]) / 20 >= 0.90
+    {service="sidestream", machine="mlab1-sidestream-offline"} 0

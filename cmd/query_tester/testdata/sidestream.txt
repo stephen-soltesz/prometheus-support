@@ -5,25 +5,24 @@ load 1m
     up{service="sidestream", machine="b"} 1
     up{service="ssh806", machine="a"} 1
     up{service="ssh806", machine="c"} 1
-
-eval instant at 0m count(up{service="sidestream"})
-    {} 2
+    up{service="ssh806", machine="d"} 1
 
 eval instant at 0m absent(up{service="sidestream"})
 # EMPTY RESULT.
 
-eval instant at 0m count(up{service="sidestream"}) < count(up{service="ssh806"})
-# EMPTY RESULT.
+# Guarantee that there are as many machines as configured sidestream targets.
+eval instant at 0m count(up{service="sidestream"}) - scalar(count(up{service="ssh806"})) != 0
+    {} -1
 
-# Sidestream
-# The set of machines that do not have the sidestream service. (strict match):
+# The set of monitored sidestream exporters that are not on inventory machines
+# (strict match), as well as the set of machines that do not have the
+# sidestream service (strict match), should be empty:
+ 
+# Identify sidestream exporters that do not have a corresponding ssh806.
 eval instant at 0m up{service="sidestream"} UNLESS ON(machine) up{service="ssh806"}
     up{service="sidestream", machine="b"} 1
 
+# Identify ssh806 servers that do not have a corresponding sidestream exporter.
 eval instant at 0m up{service="ssh806"} UNLESS ON(machine) up{service="sidestream"}
     up{service="ssh806", machine="c"} 1
-
-eval instant at 0m (up{service="sidestream"} UNLESS ON(machine) up{service="ssh806"}) OR (up{service="ssh806"} UNLESS ON(machine) up{service="sidestream"})
-    up{service="sidestream", machine="b"} 1
-    up{service="ssh806", machine="c"} 1
-
+    up{service="ssh806", machine="d"} 1

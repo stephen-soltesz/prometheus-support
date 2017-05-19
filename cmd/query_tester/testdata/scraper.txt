@@ -40,3 +40,17 @@ load 1m
 
 eval instant at 0m count BY(machine) (up{service="scraper"}) / scalar(count(count BY(rsync_module) (up{service="scraper"}))) != 1
     {machine="c"} 0.5
+
+
+# Guarantee that the ratio of the number of targets per machine to the total
+# number of rsync_modules should equal 1 globally:
+
+# count BY(machine) (up{service="scraper"}) !=
+#     scalar( count( count BY(rsync_module) (up{service="scraper"})))
+
+# As well, the set of monitored scraper targets that are not on inventory
+# machines (strict match), as well as, the set of machines that do not have
+# any scraper services (partial match), should be empty:
+
+# (up{service="scraper"} UNLESS ON(machine, experiment) up{service="rsyncd"}) OR
+# (up{service="rsyncd"} UNLESS ON(machine, experiment) up{service="scraper"})

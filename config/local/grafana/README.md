@@ -1,5 +1,14 @@
 # Local Testing
 
+## Installing jsonnet
+
+```
+git clone https://github.com/google/jsonnet.git
+cd jsonnet/
+make
+mv jsonnet /usr/local/bin/
+```
+
 ## Installing grafanalib
 
 Grafanalib depends on python3. On Ubuntu 14.04, I was able to install and run
